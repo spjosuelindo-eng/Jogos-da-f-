@@ -28,9 +28,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Extrair projeto
-        run: |
-          unzip -q jogos-da-f-app-apk.zip -d app_src
+      - - name: Extrair projeto
+  run: |
+    find . -maxdepth 2 -type f -iname "*.zip"
+    unzip -q "./jogos-da-f-app-apk.zip" -d app_src
+    APP_DIR=$(dirname "$(find app_src -name package.json -not -path '*/node_modules/*' | head -1)")
+    echo "APP_DIR=$APP_DIR" >> $GITHUB_ENV
           APP_DIR=$(dirname "$(find app_src -name package.json -not -path '*/node_modules/*' | head -1)")
           echo "APP_DIR=$APP_DIR" >> $GITHUB_ENV
 
