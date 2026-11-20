@@ -1,1 +1,58 @@
 
+name: Gerar APK - Jogos da Fe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - principal
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Extrair projeto
+        run: |
+          unzip -q jogos-da-f-app-apk.zip -d app_src
+          APP_DIR=$(dirname "$(find app_src -name package.json -not -path '*/node_modules/*' | head -1)")
+          echo "APP_DIR=$APP_DIR" >> $GITHUB_ENV
+
+      - name: Instalar dependencias
+        working-directory: ${{ env.APP_DIR }}
+        run: npm install
+
+      - name: Preparar Android
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Gerar APK
+        working-directory: ${{ env.APP_DIR }}/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jogos-da-Fe-APK
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
+
