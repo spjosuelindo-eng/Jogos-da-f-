@@ -29,26 +29,47 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Extrair projeto
+      - name: Localizar e extrair ZIP
         run: |
-          mkdir -p app_src
-          unzip -q jogos-da-f-app-apk.zip -d app_src
-          test -f app_src/package.json
+          echo "Procurando arquivo ZIP..."
+          find . -maxdepth 2 -type f -iname "*.zip"
 
-      - name: Instalar dependencias
+          ZIP_FILE=$(find . -maxdepth 2 -type f -iname "*.zip" -print -quit)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERRO: Nenhum ZIP encontrado."
+            exit 1
+          fi
+
+          echo "Arquivo encontrado: $ZIP_FILE"
+          mkdir -p app_src
+          unzip -q "$ZIP_FILE" -d app_src
+
+          PACKAGE=$(find app_src -name package.json -not -path '*/node_modules/*' -print -quit)
+
+          if [ -z "$PACKAGE" ]; then
+            echo "ERRO: package.json não encontrado."
+            find app_src -maxdepth 4 -type f
+            exit 1
+          fi
+
+          APP_DIR=$(dirname "$PACKAGE")
+          echo "APP_DIR=$APP_DIR" >> "$GITHUB_ENV"
+
+      - name: Instalar dependências
         run: |
-          cd app_src
+          cd "$APP_DIR"
           npm install
 
       - name: Preparar Android
         run: |
-          cd app_src
+          cd "$APP_DIR"
           npx cap add android
           npx cap sync android
 
       - name: Gerar APK
         run: |
-          cd app_src/android
+          cd "$APP_DIR/android"
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -56,4 +77,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Jogos-da-Fe-APK
-          path: app_src/android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
