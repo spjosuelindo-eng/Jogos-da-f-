@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
-      - master
       - principal
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -16,7 +17,7 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Preparar Node
+      - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -27,28 +28,26 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - - name: Extrair projeto
-  run: |
-    find . -maxdepth 2 -type f -iname "*.zip"
-    unzip -q "./jogos-da-f-app-apk.zip" -d app_src
-    APP_DIR=$(dirname "$(find app_src -name package.json -not -path '*/node_modules/*' | head -1)")
-    echo "APP_DIR=$APP_DIR" >> $GITHUB_ENV
-          APP_DIR=$(dirname "$(find app_src -name package.json -not -path '*/node_modules/*' | head -1)")
-          echo "APP_DIR=$APP_DIR" >> $GITHUB_ENV
+      - name: Extrair projeto
+        run: |
+          mkdir -p app_src
+          unzip -q jogos-da-f-app-apk.zip -d app_src
+          test -f app_src/package.json
 
       - name: Instalar dependencias
-        working-directory: ${{ env.APP_DIR }}
-        run: npm install
+        run: |
+          cd app_src
+          npm install
 
       - name: Preparar Android
-        working-directory: ${{ env.APP_DIR }}
         run: |
+          cd app_src
           npx cap add android
           npx cap sync android
 
       - name: Gerar APK
-        working-directory: ${{ env.APP_DIR }}/android
         run: |
+          cd app_src/android
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -56,5 +55,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Jogos-da-Fe-APK
-          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
-
+          path: app_src/android/app/build/outputs/apk/debug/app-debug.apk
